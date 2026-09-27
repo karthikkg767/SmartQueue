@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Admin Login - Smart Queue</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body class="login-page">
+
+
+<div class="login-container">
+
+    <div class="login-card">
+
+        <div class="login-icon">
+            🔐
+        </div>
+
+        <h1>Admin Login</h1>
+
+        <p class="muted">
+            Smart Queue Management System
+        </p>
+
+
+        {% if error %}
+
+        <div class="error-message">
+            {{ error }}
+        </div>
+
+        {% endif %}
+
+
+        <form method="POST">
+
+            <label>
+                Username
+            </label>
+
+            <input type="text"
+                   name="username"
+                   placeholder="Enter username"
+                   required>
+
+
+            <label>
+                Password
+            </label>
+
+            <input type="password"
+                   name="password"
+                   placeholder="Enter password"
+                   required>
+
+
+            <button type="submit"
+                    class="login-button">
+
+                Login to Admin Dashboard
+
+            </button>
+
+        </form>
+
+
+        <a href="/" class="back-link">
+            ← Back to Customer Page
+        </a>
+
+    </div>
+
+</div>
+
+
+</body>
+
+</html>

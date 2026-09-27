@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Admin Dashboard - Smart Queue</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+
+<header class="admin-header">
+
+    <div>
+
+        <h1>⚙ Admin Dashboard</h1>
+
+        <p>Smart Queue Management System</p>
+
+    </div>
+
+
+    <div class="admin-actions">
+
+        <a href="/" class="header-button">
+            👤 Customer View
+        </a>
+
+        <a href="/logout" class="header-button logout">
+            🚪 Logout
+        </a>
+
+    </div>
+
+</header>
+
+
+<main>
+
+
+    <section class="welcome">
+
+        <h2>Queue Control Center</h2>
+
+        <p>
+            Manage customers, tokens and queue operations.
+        </p>
+
+    </section>
+
+
+    <!-- STATISTICS -->
+
+    <section class="stats">
+
+        <div class="stat">
+
+            <span>🎫</span>
+
+            <h3>
+                {{ total_tokens }}
+            </h3>
+
+            <p>Total Tokens</p>
+
+        </div>
+
+
+        <div class="stat">
+
+            <span>👥</span>
+
+            <h3>
+                {{ waiting }}
+            </h3>
+
+            <p>Waiting</p>
+
+        </div>
+
+
+        <div class="stat">
+
+            <span>✅</span>
+
+            <h3>
+                {{ completed }}
+            </h3>
+
+            <p>Completed</p>
+
+        </div>
+
+
+        <div class="stat">
+
+            <span>⏭️</span>
+
+            <h3>
+                {{ skipped }}
+            </h3>
+
+            <p>Skipped</p>
+
+        </div>
+
+    </section>
+
+
+    <!-- CURRENT TOKEN -->
+
+    <section class="card admin-current">
+
+        <p class="muted">
+            CURRENTLY SERVING
+        </p>
+
+
+        <div class="big-token">
+            {{ current_token }}
+        </div>
+
+
+        <h3>
+            {{ current_service }}
+        </h3>
+
+
+        <div class="counter-buttons">
+
+            <a href="/admin/next">
+
+                <button>
+                    ▶ CALL NEXT
+                </button>
+
+            </a>
+
+
+            <a href="/admin/skip">
+
+                <button class="skip">
+                    ⏭ SKIP TOKEN
+                </button>
+
+            </a>
+
+        </div>
+
+
+        <button class="voice-button"
+                onclick="announceToken()">
+
+            🔊 Announce Token
+
+        </button>
+
+    </section>
+
+
+    <!-- WAITING QUEUE -->
+
+    <section class="card">
+
+        <div class="section-header">
+
+            <h2>
+                📋 Waiting Queue
+            </h2>
+
+            <span class="waiting-count">
+                {{ waiting }} waiting
+            </span>
+
+        </div>
+
+
+        {% if queue %}
+
+        <div class="queue-list">
+
+            {% for item in queue %}
+
+            <div class="queue-item">
+
+                <div>
+
+                    <strong>
+                        {{ item["token"] }}
+                    </strong>
+
+                    <p>
+                        {{ item["service"] }}
+                    </p>
+
+                </div>
+
+
+                {% if item["priority"] == 1 %}
+
+                <span class="priority">
+                    ⭐ PRIORITY
+                </span>
+
+                {% else %}
+
+                <span class="normal">
+                    NORMAL
+                </span>
+
+                {% endif %}
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+        {% else %}
+
+        <div class="empty">
+
+            <div>✓</div>
+
+            <h3>Queue is Empty</h3>
+
+            <p>
+                No customers are currently waiting.
+            </p>
+
+        </div>
+
+        {% endif %}
+
+    </section>
+
+
+    <!-- SERVICE STATISTICS -->
+
+    <section class="card">
+
+        <h2>
+            📊 Service Statistics
+        </h2>
+
+
+        {% if service_stats %}
+
+        <div class="service-stats">
+
+            {% for item in service_stats %}
+
+            <div class="service-row">
+
+                <span>
+                    {{ item["service"] }}
+                </span>
+
+                <strong>
+                    {{ item["total"] }}
+                </strong>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+        {% else %}
+
+        <p class="muted">
+            No service statistics available.
+        </p>
+
+        {% endif %}
+
+    </section>
+
+
+    <!-- ADMIN MANAGEMENT -->
+
+    <section class="card">
+
+        <h2>
+            ⚙ Administration
+        </h2>
+
+
+        <div class="management-buttons">
+
+
+            <a href="/history">
+
+                <button class="secondary">
+                    📜 View Token History
+                </button>
+
+            </a>
+
+
+            <a href="/admin/reset"
+               onclick="return confirm('Are you sure you want to delete all queue data?');">
+
+                <button class="danger">
+                    🗑 Reset Queue
+                </button>
+
+            </a>
+
+        </div>
+
+    </section>
+
+
+</main>
+
+
+<footer>
+
+    <p>
+        Smart Queue © 2026
+    </p>
+
+    <p>
+        Administrator Control Panel
+    </p>
+
+</footer>
+
+
+<script>
+
+function announceToken() {
+
+    fetch("/current")
+
+        .then(response => response.json())
+
+        .then(data => {
+
+            if (data.token !== "None") {
+
+                const message =
+                    "Token " +
+                    data.token +
+                    ", please proceed for " +
+                    data.service;
+
+                const speech =
+                    new SpeechSynthesisUtterance(message);
+
+                speech.rate = 0.9;
+
+                window.speechSynthesis.speak(speech);
+
+            } else {
+
+                alert(
+                    "No customer is currently being served."
+                );
+
+            }
+
+        });
+
+}
+
+</script>
+
+
+</body>
+
+</html>

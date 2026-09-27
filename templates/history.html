@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Token History - Smart Queue</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+
+<body>
+
+
+<header class="admin-header">
+
+    <div>
+
+        <h1>📜 Token History</h1>
+
+        <p>Completed and skipped tokens</p>
+
+    </div>
+
+
+    <div class="admin-actions">
+
+        <a href="/admin" class="header-button">
+            ← Dashboard
+        </a>
+
+        <a href="/logout" class="header-button logout">
+            🚪 Logout
+        </a>
+
+    </div>
+
+</header>
+
+
+<main>
+
+
+    <section class="card">
+
+
+        {% if history %}
+
+
+        <div class="history-list">
+
+
+            {% for item in history %}
+
+
+            <div class="history-item">
+
+
+                <div>
+
+                    <strong>
+                        {{ item["token"] }}
+                    </strong>
+
+                    <p>
+                        {{ item["service"] }}
+                    </p>
+
+                    {% if item["called_at"] %}
+
+                    <small>
+                        Called: {{ item["called_at"] }}
+                    </small>
+
+                    {% endif %}
+
+                </div>
+
+
+                {% if item["status"] == "completed" %}
+
+                <span class="completed">
+                    ✓ COMPLETED
+                </span>
+
+                {% else %}
+
+                <span class="skipped">
+                    ⏭ SKIPPED
+                </span>
+
+                {% endif %}
+
+
+            </div>
+
+
+            {% endfor %}
+
+
+        </div>
+
+
+        {% else %}
+
+
+        <div class="empty">
+
+            <h3>
+                No History
+            </h3>
+
+            <p>
+                No completed or skipped tokens yet.
+            </p>
+
+        </div>
+
+
+        {% endif %}
+
+
+    </section>
+
+
+</main>
+
+
+<footer>
+
+    <p>
+        Smart Queue © 2026
+    </p>
+
+</footer>
+
+
+</body>
+
+</html>
