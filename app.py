@@ -1,16 +1,37 @@
-from flask import Flask, render_template, request, redirect, session, jsonify
+import os
+import secrets
 import sqlite3
+
+from flask import Flask, render_template, request, redirect, session, jsonify
 
 app = Flask(__name__)
 
-# Secret key is used for admin login session
-app.secret_key = "smartqueue-secret-key-2026"
+DATABASE_URL = os.environ.get("DATABASE_URL")
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 
-DATABASE = "queue.db"
+if os.environ.get("VERCEL") == "1":
+    missing_settings = [
+        name for name, value in (
+            ("DATABASE_URL", DATABASE_URL),
+            ("SECRET_KEY", os.environ.get("SECRET_KEY")),
+            ("ADMIN_USERNAME", ADMIN_USERNAME),
+            ("ADMIN_PASSWORD", ADMIN_PASSWORD),
+        )
+        if not value
+    ]
+    if missing_settings:
+        raise RuntimeError(
+            "Missing required Vercel environment variables: "
+            + ", ".join(missing_settings)
+        )
 
-# Admin credentials
-ADMIN_USERNAME = "Karthik"
-ADMIN_PASSWORD = "karthi@123"
+DATABASE = os.environ.get(
+    "DATABASE_PATH",
+    os.path.join(app.root_path, "queue.db")
+)
+PLACEHOLDER = "%s" if DATABASE_URL else "?"
 
 
 # ==============================
@@ -18,19 +39,29 @@ ADMIN_PASSWORD = "karthi@123"
 # ==============================
 
 def get_db():
+    if DATABASE_URL:
+        import psycopg
+        from psycopg.rows import dict_row
+
+        return psycopg.connect(DATABASE_URL, row_factory=dict_row)
+
     connection = sqlite3.connect(DATABASE)
     connection.row_factory = sqlite3.Row
     return connection
 
 
 def create_database():
-
     connection = get_db()
     cursor = connection.cursor()
+    token_id = (
+        "BIGSERIAL PRIMARY KEY"
+        if DATABASE_URL
+        else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    )
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tokens (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id %s,
             token TEXT NOT NULL,
             service TEXT DEFAULT 'General Service',
             priority INTEGER DEFAULT 0,
@@ -38,7 +69,7 @@ def create_database():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             called_at TIMESTAMP
         )
-    """)
+    """ % token_id)
 
     connection.commit()
     connection.close()
@@ -49,39 +80,31 @@ def upgrade_database():
     connection = get_db()
     cursor = connection.cursor()
 
-    cursor.execute("PRAGMA table_info(tokens)")
-
-    columns = [row["name"] for row in cursor.fetchall()]
-
-    if "service" not in columns:
+    if DATABASE_URL:
         cursor.execute("""
-            ALTER TABLE tokens
-            ADD COLUMN service TEXT DEFAULT 'General Service'
+            SELECT column_name AS name
+            FROM information_schema.columns
+            WHERE table_schema = current_schema()
+              AND table_name = 'tokens'
         """)
+        columns = [row["name"] for row in cursor.fetchall()]
+    else:
+        cursor.execute("PRAGMA table_info(tokens)")
+        columns = [row["name"] for row in cursor.fetchall()]
 
-    if "priority" not in columns:
-        cursor.execute("""
-            ALTER TABLE tokens
-            ADD COLUMN priority INTEGER DEFAULT 0
-        """)
-
-    if "status" not in columns:
-        cursor.execute("""
-            ALTER TABLE tokens
-            ADD COLUMN status TEXT DEFAULT 'waiting'
-        """)
-
-    if "created_at" not in columns:
-        cursor.execute("""
-            ALTER TABLE tokens
-            ADD COLUMN created_at TIMESTAMP
-        """)
-
-    if "called_at" not in columns:
-        cursor.execute("""
-            ALTER TABLE tokens
-            ADD COLUMN called_at TIMESTAMP
-        """)
+    column_definitions = {
+        "service": "TEXT DEFAULT 'General Service'",
+        "priority": "INTEGER DEFAULT 0",
+        "status": "TEXT DEFAULT 'waiting'",
+        "created_at": "TIMESTAMP",
+        "called_at": "TIMESTAMP",
+    }
+    for name, definition in column_definitions.items():
+        if name not in columns:
+            add_if_missing = "IF NOT EXISTS " if DATABASE_URL else ""
+            cursor.execute(
+                f"ALTER TABLE tokens ADD COLUMN {add_if_missing}{name} {definition}"
+            )
 
     connection.commit()
     connection.close()
@@ -140,8 +163,8 @@ def home():
         cursor.execute("""
             INSERT INTO tokens
             (token, service, priority, status, created_at)
-            VALUES (?, ?, ?, 'waiting', CURRENT_TIMESTAMP)
-        """, (
+            VALUES (%s, %s, %s, 'waiting', CURRENT_TIMESTAMP)
+        """ % (PLACEHOLDER, PLACEHOLDER, PLACEHOLDER), (
             your_token,
             service,
             priority_value
@@ -253,6 +276,11 @@ def customer_dashboard(your_token=None):
 def login():
 
     if request.method == "POST":
+        if not ADMIN_USERNAME or not ADMIN_PASSWORD:
+            return render_template(
+                "login.html",
+                error="Admin login is not configured."
+            ), 503
 
         username = request.form.get("username")
         password = request.form.get("password")
@@ -416,8 +444,8 @@ def admin_next():
             UPDATE tokens
             SET status = 'serving',
                 called_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        """, (result["id"],))
+            WHERE id = %s
+        """ % PLACEHOLDER, (result["id"],))
 
     connection.commit()
     connection.close()
@@ -463,8 +491,8 @@ def admin_skip():
             UPDATE tokens
             SET status = 'serving',
                 called_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        """, (result["id"],))
+            WHERE id = %s
+        """ % PLACEHOLDER, (result["id"],))
 
     connection.commit()
     connection.close()
@@ -572,14 +600,8 @@ def logout():
     return redirect("/login")
 
 
-# ==============================
-# START APPLICATION
-# ==============================
+create_database()
+upgrade_database()
 
 if __name__ == "__main__":
-
-    create_database()
-
-    upgrade_database()
-
-    app.run(debug=True)
+    app.run(debug=False)
