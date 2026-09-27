@@ -27,7 +27,7 @@ every environment you will use:
 
 | Variable | Value |
 | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string from your database provider |
+| `DATABASE_URL` | PostgreSQL connection string from your database provider. The Vercel Neon integration can also supply this as `DATABASE_POSTGRES_URL`. |
 | `SECRET_KEY` | A long random secret, for example output from `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
 | `ADMIN_USERNAME` | Admin login username |
 | `ADMIN_PASSWORD` | A strong admin login password |

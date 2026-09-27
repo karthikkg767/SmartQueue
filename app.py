@@ -6,7 +6,10 @@ from flask import Flask, render_template, request, redirect, session, jsonify
 
 app = Flask(__name__)
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = (
+    os.environ.get("DATABASE_URL")
+    or os.environ.get("DATABASE_POSTGRES_URL")
+)
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
